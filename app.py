@@ -1,47 +1,63 @@
-# основной файл приложения. здесь конфигурируется фласк, сервисы, SQLAlchemy и все остальное что требуется для приложения.
-# этот файл часто является точкой входа в приложение
-
-# Пример
-
 from flask import Flask
 from flask_restx import Api
 
 from config import Config
-# from models import Review, Book
+from dao.model.director import Director
+from dao.model.genre import Genre
 from setup_db import db
-# from views.books import book_ns
-# from views.reviews import review_ns
+from dao.model.movie import Movie
+from views.movies import movie_ns
 
 
-# функция создания основного объекта app
-def create_app(config_object):
+def create_app(config_object: Config) -> Flask:
     application = Flask(__name__)
     application.config.from_object(config_object)
-    register_extensions(application)
+    application.app_context().push()
     return application
 
 
 # функция подключения расширений (Flask-SQLAlchemy, Flask-RESTx, ...)
-def register_extensions(application):
+def register_extensions(application: Flask):
     db.init_app(application)
     api = Api(application)
-    api.add_namespace(...)
-    create_data(application, db)
+    api.add_namespace(movie_ns)
 
 
 # функция
-def create_data(app, db):
-    with app.app_context():
-        db.create_all()
+def create_data(application, database):
+    with application.app_context():
+        database.create_all()
+    g1 = Genre(id=1, name="комедия")
+    g2 = Genre(id=2, name="сериал")
 
-#         создать несколько сущностей чтобы добавить их в БД
+    d1 = Director(id=1, name="Вася")
+    d2 = Director(id=2, name="Петя")
 
-#        with db.session.begin():
-#            db.session.add_all(здесь список созданных объектов)
+    m1 = Movie(id=1,
+               title="Список",
+               description="Романтическая история о молодой паре, стремящейся стать идеальной. Красавица и умница Кэтрин составляет список «доработок» для своего бойфренда Алекса, чтобы избавить его от недостатков.",
+               trailer="https://www.ivi.ru/watch/158987",
+               year=2018,
+               rating=7.1,
+               genre_id=1,
+               director_id=1)
+    m2 = Movie(id=2,
+               title="Пансион",
+               description="Своенравные девушки поступают в закрытый исправительный пансион на отдаленном острове. Но система перевоспитания даёт сбой и приводит к обратному эффекту. ",
+               trailer="https://www.ivi.ru/watch/pansion",
+               year=2022,
+               rating=6.5,
+               genre_id=2,
+               director_id=2)
 
+    with database.session.begin(subtransactions=True):
+        database.session.add_all([g1, g2])
+        database.session.add_all([d1, d2])
+        database.session.add_all([m1, m2])
 
-app = create_app(Config())
-app.debug = True
 
 if __name__ == '__main__':
-    app.run(host="localhost", port=10001, debug=True)
+    app = create_app(Config())
+    register_extensions(app)
+    create_data(app, db)
+    app.run()
