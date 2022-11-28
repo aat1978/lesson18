@@ -1,7 +1,7 @@
 from flask import request
 from flask_restx import Resource, Namespace
 
-from container import movie_service
+from implemented import movie_service
 from dao.model.movie import MovieSchema
 
 movie_ns = Namespace('movies')
@@ -13,13 +13,22 @@ movies_schema = MovieSchema(many=True)
 @movie_ns.route('/')
 class MoviesView(Resource):
     def get(self):
-        all_movies = movie_service.get_all()
+        director = request.args.get("director_id")
+        genre = request.args.get("genre_id")
+        year = request.args.get("year")
+        filter = {
+            "director_id": director,
+            "genre_id": genre,
+            "year": year,
+        }
+
+        all_movies = movie_service.get_all(filter)
         return movies_schema.dump(all_movies), 200
 
     def post(self):
         req_json = request.json
-        movie_service.create(req_json)
-        return "", 201
+        movie = movie_service.create(req_json)
+        return "", 201, {"location": f"/movies/{movie.id}"}
 
 
 @movie_ns.route('/<int:uid>')
